@@ -136,7 +136,7 @@ func getInitContainers(originalContainers []corev1.Container, podSecurityContext
 			Name:            "copy-vault-env",
 			Image:           viper.GetString("vault_env_image"),
 			ImagePullPolicy: corev1.PullPolicy(viper.GetString("vault_env_image_pull_policy")),
-			Command:         []string{"sh", "-c", "cp /usr/local/bin/vault-env /vault/"},
+			Command:         []string{"sh", "-c", "cp /usr/local/bin/vault-env /vault/ && cp /etc/ssl/certs/ca-certificates.crt /vault/"},
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "vault-env",
@@ -710,6 +710,11 @@ func (mw *mutatingWebhook) mutateContainers(containers []corev1.Container, podSp
 				MountPath: mountPath,
 				SubPath:   "ca.crt",
 			})
+		} else {
+			container.Env = append(container.Env, corev1.EnvVar{
+				Name:  "VAULT_CACERT",
+				Value: "/vault/ca-certificates.crt",
+			})
 		}
 
 		if vaultConfig.UseAgent {
@@ -830,6 +835,11 @@ func (mw *mutatingWebhook) mutatePod(pod *corev1.Pod, vaultConfig internal.Vault
 			Name:      volumeName,
 			MountPath: mountPath,
 			SubPath:   "ca.crt",
+		})
+	} else {
+		containerEnvVars = append(containerEnvVars, corev1.EnvVar{
+			Name:  "VAULT_CACERT",
+			Value: "/vault/ca-certificates.crt",
 		})
 	}
 
